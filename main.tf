@@ -1,9 +1,4 @@
 locals {
-  resource_group_name = coalesce(
-    var.resource_group_name,
-    "rg-${var.project}-${var.environment}"
-  )
-
   default_tags = {
     project     = var.project
     environment = var.environment
@@ -13,26 +8,33 @@ locals {
   tags = merge(local.default_tags, var.extra_tags)
 }
 
-# ── Resource Group ────────────────────────────────────────────────────────────
-resource "azurerm_resource_group" "main" {
-  name     = local.resource_group_name
-  location = var.location
-  tags     = local.tags
+# ── Random pet name (demo resource) ─────────────────────────────────────────
+resource "random_pet" "main" {
+  length    = 2
+  separator = "-"
 }
 
-# ── Storage Account (demo resource) ──────────────────────────────────────────
-resource "azurerm_storage_account" "main" {
-  name                     = "st${var.project}${var.environment}001"
-  resource_group_name      = azurerm_resource_group.main.name
-  location                 = azurerm_resource_group.main.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
+# ── Random ID ────────────────────────────────────────────────────────────────
+resource "random_id" "main" {
+  byte_length = 4
+}
 
-  blob_properties {
-    delete_retention_policy {
-      days = 7
-    }
+# ── Null resource with triggers ──────────────────────────────────────────────
+resource "null_resource" "main" {
+  triggers = {
+    pet_name = random_pet.main.id
+    rand_id  = random_id.main.hex
   }
+}
 
-  tags = local.tags
+# ── Local file output ────────────────────────────────────────────────────────
+resource "local_file" "metadata" {
+  filename = "${path.module}/generated/metadata.json"
+  content = jsonencode({
+    project     = var.project
+    environment = var.environment
+    pet_name    = random_pet.main.id
+    random_id   = random_id.main.hex
+    tags        = local.tags
+  })
 }

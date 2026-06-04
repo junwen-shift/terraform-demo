@@ -1,76 +1,50 @@
 # terraform-demo
 
-A demo Terraform project targeting **Azure**, with a full GitHub Actions CI/CD pipeline.
+A demo Terraform project using **credential-free providers** to showcase Dependabot lockfile management and GitHub Actions CI/CD.
+
+No cloud credentials required — all providers (`null`, `random`, `local`) run locally.
 
 ## Project Structure
 
 ```
 .
-├── providers.tf          # Terraform & AzureRM provider config
-├── variables.tf          # Input variables
-├── main.tf               # Resources (resource group + storage account)
-├── outputs.tf            # Output values
-├── .gitignore            # Standard Terraform ignores
+├── providers.tf              # Terraform & provider version constraints
+├── variables.tf              # Input variables
+├── main.tf                   # Resources (random_pet, random_id, null_resource, local_file)
+├── outputs.tf                # Output values
+├── .terraform.lock.hcl       # Provider dependency lockfile (committed)
+├── .gitignore
 └── .github/
+    ├── dependabot.yml        # Dependabot config for Terraform + Actions
     └── workflows/
-        └── terraform.yml # GitHub Actions CI/CD pipeline
+        └── terraform.yml     # CI pipeline (validate → plan)
 ```
 
-## Resources Deployed
+## Resources
 
-| Resource | Name pattern |
+| Resource | Purpose |
 |---|---|
-| Resource Group | `rg-<project>-<environment>` |
-| Storage Account | `st<project><environment>001` |
+| `random_pet.main` | Generates a human-readable pet name |
+| `random_id.main` | Generates a random hex identifier |
+| `null_resource.main` | Demonstrates triggers and dependencies |
+| `local_file.metadata` | Writes a JSON metadata file locally |
 
-## GitHub Actions Pipeline
+## Dependabot
 
-| Job | Triggered by | Purpose |
-|---|---|---|
-| **validate** | Every push / PR | `terraform fmt` + `terraform validate` |
-| **plan** | Every push / PR | `terraform plan`; posts diff comment on PRs |
-| **apply** | Push to `main` or manual dispatch (`apply`) | `terraform apply` from saved plan |
-| **destroy** | Manual dispatch only (`destroy`) | `terraform destroy` with environment guard |
-
-### Required Secrets
-
-Set these in **Settings → Secrets → Actions**:
-
-| Secret | Description |
-|---|---|
-| `AZURE_CLIENT_ID` | Service principal app ID |
-| `AZURE_CLIENT_SECRET` | Service principal secret |
-| `AZURE_TENANT_ID` | Azure AD tenant ID |
-| `AZURE_SUBSCRIPTION_ID` | Target subscription ID |
-
-### Environments
-
-Create GitHub Environments (`dev`, `staging`, `prod`) for approval gates on apply/destroy.
+Dependabot is configured to update **Terraform providers** and **GitHub Actions** weekly via `.terraform.lock.hcl`.
 
 ## Local Usage
 
 ```bash
-# Authenticate with Azure
-az login
-az account set --subscription "<your-subscription-id>"
-
-# Init
 terraform init
-
-# Plan
-terraform plan -var="subscription_id=<id>" -var="environment=dev"
-
-# Apply
-terraform apply -var="subscription_id=<id>" -var="environment=dev"
+terraform plan
+terraform apply
 ```
 
 ## Variables
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `subscription_id` | `string` | — | Azure subscription ID (required) |
-| `location` | `string` | `West Europe` | Azure region |
 | `environment` | `string` | `dev` | `dev` / `staging` / `prod` |
 | `project` | `string` | `demo` | Short name used in resource naming |
-| `resource_group_name` | `string` | `null` | Override the auto-generated RG name |
 | `extra_tags` | `map(string)` | `{}` | Additional tags to merge |

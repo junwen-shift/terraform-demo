@@ -1,20 +1,14 @@
-output "resource_group_name" {
-  description = "Name of the deployed resource group"
-  value       = azurerm_resource_group.main.name
+output "pet_name" {
+  description = "Generated pet name"
+  value       = random_pet.main.id
 }
 
-output "resource_group_id" {
-  description = "Resource ID of the resource group"
-  value       = azurerm_resource_group.main.id
+output "random_id" {
+  description = "Generated random hex ID"
+  value       = random_id.main.hex
 }
 
-output "storage_account_name" {
-  description = "Name of the storage account"
-  value       = azurerm_storage_account.main.name
-}
-
-output "storage_account_id" {
-  description = "Resource ID of the storage account"
-  value       = azurerm_storage_account.main.id
-  sensitive   = true
+output "metadata_file" {
+  description = "Path to the generated metadata file"
+  value       = local_file.metadata.filename
 }
