@@ -1,0 +1,77 @@
+name: Refresh Terraform Lockfile
+
+# Runs every ~2 weeks (1st and 15th of each month) or manually via workflow_dispatch.
+# Refreshes .terraform.lock.hcl by running `terraform init -upgrade`, which pulls
+# the latest provider versions matching the current `version` constraints in
+# providers.tf. No .tf files are modified — only the lockfile.
+#
+# This complements Dependabot:
+#   - Dependabot bumps `version` constraints in providers.tf
+#   - This workflow refreshes the lockfile within the existing constraints
+
+on:
+  schedule:
+    - cron: "0 0 1,15 * *"
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-terraform-lockfile
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  refresh:
+    name: Refresh .terraform.lock.hcl
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform Init (upgrade providers)
+        run: terraform init -upgrade
+
+      - name: Check for lockfile changes
+        id: check
+        run: |
+          if git diff --quiet .terraform.lock.hcl; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No lockfile changes detected — nothing to do."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Lockfile changes detected:"
+            git diff --stat .terraform.lock.hcl
+          fi
+
+      - name: Create Pull Request
+        if: steps.check.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deps): refresh terraform lockfile"
+          title: "chore(deps): refresh terraform lockfile"
+          body: |
+            Automated refresh of `.terraform.lock.hcl` via `terraform init -upgrade`.
+
+            **No `.tf` files were modified** — only the lockfile was updated to pull the latest provider versions matching the current `version` constraints in `providers.tf`.
+
+            ### Diff summary
+            <!-- The diff stat will appear in the PR conversation after the action runs. -->
+
+            This complements Dependabot:
+            - **Dependabot** bumps `version` constraints in `providers.tf`
+            - **This workflow** refreshes the lockfile within the existing constraints
+          branch: chore/refresh-terraform-lockfile
+          delete-branch: true
+          labels: |
+            dependencies
+            terraform
+            lockfile
