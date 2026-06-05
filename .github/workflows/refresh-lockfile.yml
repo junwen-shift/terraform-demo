@@ -52,7 +52,9 @@ jobs:
           fi
 
       - name: Create Pull Request
+        id: create_pr
         if: steps.check.outputs.changed == 'true'
+        continue-on-error: true
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -75,3 +77,8 @@ jobs:
             dependencies
             terraform
             lockfile
+
+      - name: Warn when PR creation is blocked by repository settings
+        if: steps.check.outputs.changed == 'true' && steps.create_pr.outcome == 'failure'
+        run: |
+          echo "::warning::Lockfile changes were generated and pushed, but this repository currently blocks GitHub Actions from creating pull requests. Enable 'Allow GitHub Actions to create and approve pull requests' in repository settings to allow automatic PR creation."
